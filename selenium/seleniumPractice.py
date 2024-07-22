@@ -45,8 +45,8 @@ def createProxyWebDriver(proxy, detach=False):
     # headless browser 설정
     chrome_options = Options()
 
-    # chrome_options.add_experimental_option("detach", detach)
-    chrome_options.add_argument("--headless=new")
+    chrome_options.add_experimental_option("detach", detach)
+    # chrome_options.add_argument("--headless=new")
     # chrome_options.add_argument('--proxy-server=http://%s' % proxy); print(f"--proxy-server={proxy}")
     chrome_options.add_argument("--incognito")
     chrome_options.add_argument("disable-blink-features=AutomationControlled")  # 자동화 탐지 방지
@@ -92,7 +92,8 @@ def proxy_test_ff(proxy, url):
 # driver_proxy_test("20.205.61.143:80")
 # anidb_proxy_test("47.243.166.133:18080")
 # proxy_test("47.243.166.133:18080", "https://anidb.net/anime/5391")
-proxy_test("160.86.242.23:8080", "https://anidb.net/anime/12142")
+# proxy_test("160.86.242.23:8080", "https://anidb.net/anime/12142")
+proxy_test("160.86.242.23:8080", "https://www.mangaupdates.com/")
 # proxy_test_ff("3.10.93.50:80", "https://anidb.net/anime/5391")
 
 """

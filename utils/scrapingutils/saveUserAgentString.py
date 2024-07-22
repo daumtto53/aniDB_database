@@ -20,7 +20,7 @@ for e in uls:
 
 print(userAgents)
 
-with open("../resources/useragent/useragent.txt", "w+") as f :
+with open("../../resources/useragent/useragent.txt", "w+") as f :
     for agent in userAgents:
         f.write(agent)
         f.write("\n")

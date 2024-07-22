@@ -31,6 +31,11 @@ def sleep_random_time(start, finish):
 #     with open('')
 
 def get_proxies(dir):
-    with open("../resources/http_proxies.txt") as f:
+    with open(dir, 'r') as f:
+        proxies = f.read().split("\n")
+        return proxies
+
+def get_https_proxies(https_dir):
+    with open(dir, 'r') as f:
         proxies = f.read().split("\n")
         return proxies
