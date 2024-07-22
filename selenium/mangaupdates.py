@@ -2,6 +2,7 @@ import random
 import re
 import time
 
+import requests
 from selenium import webdriver
 import selenium.webdriver.chrome.options
 from selenium.webdriver.common.by import By
@@ -168,8 +169,48 @@ def start_from_page(pageNum) :
         next_button_exists = driver.find_element(By.LINK_TEXT, "Next Page").is_displayed()
         time.sleep(random.uniform(3, 8))
 
+"""
+    requests 설정
+    * user-agents
+    * referer-
+"""
+def configure_header():
+    # UserAgent는 똑같아야함.
+    useragent = useragents[int(random.uniform(0, len(useragents) - 1))]
+    referer = "https://www.mangaupdates.com/series.html?act=genresearch"
+    headers = {
+        'referer': referer,
+        'useragent': useragent
+    }
+    return  headers
 
+def configure_proxy(proxy):
+    return "172.183.241.1:8080"
+
+def read_single_novel_info_page(url, proxy) :
+    try:
+        # request 설정
+        res = requests.get("url",
+                   proxies=configure_proxy(proxy),
+                    headers=configure_header(),
+                           timeout=20)
+        # request에 대해서 HTML을 받아온다.
+        # BeautifulSoup(content, 'html.parser)
+        #
+    except requests.exceptions.Timeout as ex:
+        print(f"WARNING: request timed out, STATUSCODE = {ex.response.status_code}")
+    except requests.exceptions.RequestException as ex:
+        print(f"WARNING: SOMETHING WRONG, STATUSCODE = {ex.response.status_code}")
+
+def selenium_test():
+    driver = createProxyWebDriver_Chrome(
+        "172.183.241.1:8080"
+        # "160.86.242.23:8080"
+    )
+    driver.get(f"https://www.mangaupdates.com/series.html?page=12&type=novel&perpage=100&display=list")
+    time.sleep(random.uniform(2,5))
 
 
 # driver_test()
-start_from_page(35)
+# start_from_page(35)
+selenium_test()

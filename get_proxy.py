@@ -1,7 +1,9 @@
 import queue
+import random
 import threading
 import time
 from datetime import datetime
+import utils.utils as utils
 
 
 import requests
@@ -13,6 +15,11 @@ with open("./resources/http_proxies_speedx", "r") as f :
     proxies = f.read().split("\n")
     for p in proxies:
         q.put(p)
+
+def get_valid_proxies(url):
+    return valid_proxies
+
+
 
 def check_proxies(url) :
     global q
@@ -33,20 +40,20 @@ def check_proxies(url) :
         if res.status_code == 200:
             print(f"could connect = {proxy}")
             valid_proxies.append(proxy)
-        time.sleep(2)
+            utils.sleep_random_time(20, 40)
 
 working_threads = []
 
-check_proxies("https://myanimelist.net/manga/13/One_Piece")
+check_proxies(f"https://myanimelist.net/manga/{random.uniform(1, 5000)}")
 
 # for _ in range(10) :
 #     thread = threading.Thread(target=check_proxies, args=("https://myanimelist.net/anime/35343/Menhera_Ayuri_no_Yamanai_Onedari__Headphone_wa_Hazusenai",))
 #     thread.start()
 #     working_threads.append(thread)
 
-for t in working_threads :
-    print(123)
-    # t.join()
+# for t in working_threads :
+#     t.join()
+
 
 
 print(f"valid proxies = {len(valid_proxies)}")
