@@ -118,7 +118,7 @@ def scrape_publisher_thread():
             logging.info(f"LINK={link}, website_url={website_url}")
 
 
-            utils.utils.sleep_random_time(20,60)
+            utils.utils.sleep_random_time(30,60)
 
             data_queue.put({
                 'title': title_name,
@@ -149,6 +149,7 @@ def scrape_publisher_thread():
 
 
 
+# 안돌아가는 오류가 있음. 나중에 Test 해볼 것.
 def save_error_link_to_retry(q):
     logging.info(f"Saving ERROR to file...")
     RELATIVE_FILE_PATH = '../resources/error/publisher_error_link.txt'
