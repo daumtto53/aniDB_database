@@ -42,9 +42,9 @@ def get_random_useragent(useragents):
 
 # 10 <= start, finish <= n
 def sleep_random_time(start, finish):
-    if start <= 10:
-        print("SLEEP OVER 10 SEC OR MORE")
-        return 20
+    if start <= 5:
+        print("SLEEP OVER 5 SEC OR MORE")
+        start = 5
     randomized_interval = random.uniform(start, finish)
     time.sleep(randomized_interval)
 
