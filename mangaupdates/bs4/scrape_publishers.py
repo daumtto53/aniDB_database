@@ -1,4 +1,6 @@
 import threading
+import logging
+import sys
 
 from bs4 import BeautifulSoup
 import requests
@@ -7,6 +9,18 @@ import os.path
 import pandas as pd
 
 import queue
+
+# LOGGING
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("scrape_publishers.log", mode="w"),
+    ],
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 """
@@ -28,7 +42,7 @@ headers = utils.utils.get_headers(useragent)
 processed_publisher_list = []
 
 def get_publisher_links():
-    with open("../../resources/mangaupdates/publisher_links_practice_30.txt") as f:
+    with open("../../resources/mangaupdates/publisher_links.txt") as f:
         links = f.read().split("\n")
     return links
 
@@ -83,23 +97,28 @@ def scrape_publisher_thread():
             soup = BeautifulSoup(publisher_request.text, 'html.parser').find('body')
 
             title_name = soup.find("span", {"class": "releasestitle tabletitle"}).get_text().strip()
-            print(title_name)
+            # print(title_name)
+            logging.info(f"LINK={link}, TITLE_NAME={title_name}")
 
             alternate_name_string = soup.find("div", {"class": "sContent"}).get_text('\n').split('\n')
             alternate_name_string = list(filter(None, alternate_name_string))
-            print(alternate_name_string)
+            # print(alternate_name_string)
+            logging.info(f"LINK={link}, Link={link}")
 
             type = soup.find_all("div", {"class": "sContent"})[1].get_text().strip()
-            print(type)
+            logging.info(f"LINK={link}, type={type}")
+            # print(type)
 
             website_url = soup.find_all("div", {"class": "sContent"})[3].find('a', href=True)
             if website_url is not None:
                 website_url = website_url['href']
             else:
                 website_url = ''
-            print(website_url)
+            # print(website_url)
+            logging.info(f"LINK={link}, website_url={website_url}")
 
-            utils.utils.sleep_random_time(4, 10)
+
+            utils.utils.sleep_random_time(20,60)
 
             data_queue.put({
                 'title': title_name,
@@ -110,10 +129,11 @@ def scrape_publisher_thread():
 
         # request 에러 ==
         except requests.exceptions.RequestException as e:
-            print(f"REQUEST EXCEPTION : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.WARNING(f"REQUEST EXCEPTION : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
             thread_proxy = utils.utils.get_randomzied_element(proxies)
+            continue
         except TypeError as e:
-            print(f"TYPEERROR : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.WARNING(f"TYPEERROR : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
             thread = threading.Thread(target=scrape_publisher_thread)
             threads.append(thread)
             thread.start()
@@ -123,25 +143,33 @@ def scrape_publisher_thread():
             links_to_retry.put(link)
             continue
         except requests.exceptions.MissingSchema as e:
-            print(f"URLEMPTYERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.WARNING(f"URLEMPTYERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
         except AttributeError as e:
-            print(f"ATTRIBUTEERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.WARNING(f"ATTRIBUTEERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
 
 
 
 def save_error_link_to_retry(q):
-    with open("../resources/error/publisher_error_link.txt", mode="w+", encoding="utf-8") as f:
+    logging.info(f"Saving ERROR to file...")
+    RELATIVE_FILE_PATH = '../resources/error/publisher_error_link.txt'
+    path = utils.utils.get_absolute_path(RELATIVE_FILE_PATH)
+
+    with open(path, mode="a+") as f:
         while q.empty():
             link = q.get()
             f.write(f"{link}\n")
+    logging.info(f"Saving ERROR to file... FINISHED")
 
 
 def save_publisher_queue_data_to_csv(q):
+    logging.info(f"Saving PUBLISHER to file...")
     RELATIVE_FILE_PATH = '../resources/csv/publishers.csv'
-    utils.utils.create_empty_file(RELATIVE_FILE_PATH)
 
     # queue elements of dictionary object -> array
-    dictlist = list(q)
+    # dictlist = list(q)
+    dictlist = []
+    while not q.empty():
+        dictlist.append(q.get())
 
     title = [data['title'] for data in dictlist]
     publisher_names = [data['publisher_names'] for data in dictlist]
@@ -160,6 +188,7 @@ def save_publisher_queue_data_to_csv(q):
         index=False,
         header=False
     )
+    logging.info(f"Saving PUBLISHER to file... FINISHED")
 
 
 def save_publisher_data_to_csv(dict):
