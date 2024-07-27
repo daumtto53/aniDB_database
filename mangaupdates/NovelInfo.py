@@ -20,7 +20,7 @@ class NovelInfo:
         self.authors = []
         self.original_publisher = []
         self.serialized_in = []
-        self.genre=[]
+        self.genres=[]
         # [{start:"", end:""}, ]
         self.anime_start_and_end = []
 
@@ -74,8 +74,8 @@ class NovelInfo:
         self.image_url= value
 
     # Getter and Setter for genre
-    def set_genre(self, value):
-        self.genre = value
+    def set_genres(self, value):
+        self.genres = value
 
     def set_authors(self, value):
         self.authors= value
