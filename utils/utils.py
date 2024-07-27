@@ -18,6 +18,13 @@ def create_empty_file(relative_path):
         pass
 
 
+def write_to_file(relative_path, content):
+    path = get_absolute_path(relative_path)
+    with open(path, 'w') as f:
+        f.write(content)
+        f.write("\n")
+
+
 def get_useragents() :
     useragent_fullpath = get_absolute_path(useragent_path)
 
