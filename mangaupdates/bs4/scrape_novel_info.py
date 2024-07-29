@@ -91,7 +91,12 @@ def read_practice_html():
     # link = "https://www.mangaupdates.com/series/be9td6r/madan-no-ou-to-senki-novel"
     # link = "https://www.mangaupdates.com/series/rullw8t/saenai-kanojo-no-sodatekata-novel"
     # link = "https://www.mangaupdates.com/series/z4ycn3t/shinigami-no-ballad-novel"
-    link = "https://www.mangaupdates.com/series/ouam6mt/zero-no-tsukaima-novel"
+    # link = "https://www.mangaupdates.com/series/ouam6mt/zero-no-tsukaima-novel"
+    # link = "https://www.mangaupdates.com/series/i5e5n8z/hack-cell-novel"
+    # link = "https://www.mangaupdates.com/series/uf44acm/2000-years-of-magic-history-in-my-head-novel"
+
+    #Manga link
+    link = "https://www.mangaupdates.com/series/22jigcm/jojo-no-kimyou-na-bouken-part-7-steel-ball-run"
     req = requests.get(
         link,
         proxies={'http': proxy},
@@ -114,7 +119,7 @@ def read_practice_html():
     set_novel_info_related_series(novel_info, to_parse_list[2])
     set_novel_info_associated_names(novel_info, to_parse_list[3])
     set_novel_info_status_in_origin_country(novel_info, to_parse_list[6])
-    # set_novel_info_anime_start_end(novel_info, to_parse_list[8])
+    set_novel_info_anime_start_end(novel_info, to_parse_list[8])
     set_novel_info_image_url(novel_info, to_parse_list[13])
     set_novel_info_genre(novel_info,to_parse_list[14] )
     set_novel_info_authors(novel_info, to_parse_list[18])
@@ -130,7 +135,7 @@ def set_novel_info_title(novel_info, soup):
     # title 처리
     title = soup.find("span", {"class": "releasestitle tabletitle"}).get_text()
     novel_info.set_title(title)
-    logging.info(f"title={novel_info.title}")
+    logging.info(f"TITLE={novel_info.title}")
 
 def set_novel_info_description(novel_info, soup):
     desc = ''
@@ -138,13 +143,16 @@ def set_novel_info_description(novel_info, soup):
         desc = soup.find("div", {"id": "div_desc_more"}).get_text().strip()
     else:
         desc = soup.get_text().strip()
+        if desc == 'N/A':
+            desc = ''
     novel_info.set_description(desc)
-    logging.info(f"desc={novel_info.description}")
+    logging.info(f"DESC={novel_info.description}")
 
 def set_novel_info_type(novel_info, soup):
     novel_info.set_type(soup.get_text().strip())
-    logging.info(f"type={novel_info.type}")
+    logging.info(f"TYPE={novel_info.type}")
 
+# What if N/A
 def set_novel_info_related_series(novel_info, soup):
     related_series_list = []
     # related_series = list(map(lambda a_element: a_element.get_text().strip(), a_list))
@@ -165,9 +173,10 @@ def set_novel_info_related_series(novel_info, soup):
             'relation': related_series_relation,
         })
     novel_info.set_related_series(related_series_list)
-    logging.info(f'related_series = {related_series_list}')
+    logging.info(f'RELATED_SERIES = {related_series_list}')
 
 
+# What if N/A
 def set_novel_info_associated_names(novel_info, soup):
     associated_names_list = []
     associated_names_list.append({
@@ -175,6 +184,15 @@ def set_novel_info_associated_names(novel_info, soup):
         'language': 'en'
     })
     associated_names = [text.strip() for text in soup.stripped_strings]
+    # N/A
+    if associated_names[0] == 'N/A':
+        novel_info.set_associated_names({
+            'title': '',
+            'language': '',
+        })
+        logging.info(f"ASSOCIATED_NAMES={novel_info.associated_names} [[ title = {novel_info.title} ]]")
+        return
+
     for e in associated_names:
         e = e.strip()
         pattern = re.compile(r'^(.*?)(?:\s*(\(.*\)))?$')
@@ -201,9 +219,10 @@ def set_novel_info_associated_names(novel_info, soup):
                 novel_info.set_title(e['title'])
             else:
                 continue
-    logging.info(f"associated_names={novel_info.associated_names} [[ title = {novel_info.title} ]]")
+    logging.info(f"ASSOCIATED_NAMES={novel_info.associated_names} [[ title = {novel_info.title} ]]")
 
 
+# What if N/A
 def set_novel_info_status_in_origin_country(novel_info, soup):
     volume = 0
     status = ''
@@ -224,7 +243,7 @@ def set_novel_info_status_in_origin_country(novel_info, soup):
         'volume': volume,
         'status': status
     })
-    logging.info(f'status_in_original_country={novel_info.status_in_origin_country}')
+    logging.info(f'STATUS_IN_ORIGINAL_COUNTRY={novel_info.status_in_origin_country}')
 
 
 """
@@ -245,98 +264,121 @@ def set_novel_info_status_in_origin_country(novel_info, soup):
     Starts at Vol 1 (S1) / Vol 6 (Movie)
     Ends at Vol 3 (S1) / Vol 6 (Movie) - Skip Vol 4-5
 
-    Vol\s*(\d+)(?:.*?)?(?:\(S(\d+).*?\)|\((.*)\))? vs N/A
+    Vol\s*(\d+)(?:,|.*?)(?:\(S(\d+).*?\)|\((.*)\))|Vol\s*(\d+) vs N/A
+    OR
+    Vol\s*(\d+)(?:,|.*?)(?:\((S\d+|Movie).*?\))|Vol\s*(\d+) vs N/A
+    Vol 1 
     
 """
-# def set_novel_info_anime_start_end(novel_info, soup):
-#     novel_anime_premire_list = []
-#     print(soup.get_text())
-#     if soup.get_text() == 'N/A':
-#         set_novel_info_anime_start_end([])
-#         return
-#     text_content = soup.get_text(separator='\n')
-#     logging.info(f'text_content={text_content}')
-#
-#     #Starts\s*at\s*(?:(?:Vol\s*(\d+)\s*(?:\((S\d+|.*)\))?))*(?:.*[\r\n]*)(?:Ends\s*at\s*(?:(?:Vol\s*(\d+)\s*(?:\((S\d+|.*)\))?))*)?
-#     pattern = re.compile(r'(?:Vol\s*(\d+)\s*(?:\((S\d+|.*)\))?)')
-#     matches = pattern.findall(text_content[0])
-#     print(matches)
+# What if N/A
+def set_novel_info_anime_start_end(novel_info, soup):
+    novel_anime_premire_list = []
+    logging.info(f'soup: get_anime_start_end = {soup.get_text()}')
+    if soup.get_text() == 'N/A':
+        novel_info.set_anime_start_and_end([])
+        logging.info(f'NOVEL_ANIME_START_AND_END = {novel_anime_premire_list}')
+        return
+    text_content = soup.get_text(separator='\n').split('\n')
+    logging.info(f'text_content={text_content}')
+    if len(text_content) != 3:
+        novel_info.set_anime_start_and_end([])
+        logging.info(f'NOVEL_ANIME_START_AND_END = {novel_anime_premire_list}')
+        return
+    starts_at_text = text_content[0]
+    ends_at_text = text_content[1]
+    logging.info(f'starts_at={starts_at_text}, ends_at={ends_at_text}')
+
+    # 분리하다.
+    season_num = 0
+    pattern = re.compile(r'Vol\s*(\d+)(?:,|.*?)(?:\((S\d+|Movie).*?\))|Vol\s*(\d+)')
+    start_arr = pattern.findall(starts_at_text)
+    end_arr = pattern.findall(ends_at_text)
+    season_num = min(len(start_arr), len(end_arr))
+    logging.info(f'season_num = {season_num}')
+    logging.info(f'start_arr = {start_arr}, season_num = {season_num}')
+    logging.info(f'end_arr = {end_arr}, season_num = {season_num}')
+
+    for index in range(0, season_num):
+        volume_start = start_arr[index][0]
+        volume_end = end_arr[index][0]
+        anime_start = 0
+        anime_end = 0
+        if start_arr[index][2] == '':
+            anime_start = int(start_arr[index][1][1])
+        else:
+            anime_start = int(start_arr[index][2])
+        if end_arr[index][2] == '':
+            anime_end = int(end_arr[index][1][1])
+        else:
+            anime_end = int(end_arr[index][2])
+
+        novel_anime_premire_list.append({
+            'volume_start': volume_start,
+            'anime_start': anime_start,
+            'volume_end': volume_end,
+            'anime_end': anime_end,
+        })
+
+    novel_info.set_anime_start_and_end(novel_anime_premire_list)
+    logging.info(f'NOVEL_ANIME_START_AND_END = {novel_info.anime_start_and_end}')
 
 
-    # novel_info.set_title(title)
-    # print(novel_info.title)
-
+# What if n/A
 def set_novel_info_image_url(novel_info, soup):
     # title 처리
     img_url = soup.find('img')['src']
     novel_info.set_image_url(img_url)
-    logging.info(novel_info.image_url)
+    logging.info(f'URL = {novel_info.image_url}')
 
 def set_novel_info_genre(novel_info, soup):
-    # title 처리
     genres = soup.get_text(separator='\n').strip().split('\n')
     genres = [item.strip() for item in genres if item.strip() and item.strip() != 'Search for series of same genre(s)']
     novel_info.set_genres(genres)
     logging.info(f'GENRES = {novel_info.genres}')
 
 
+# What if N/A
 def set_novel_info_authors(novel_info, soup):
     authors = soup.get_text(separator='\n').strip().split('\n')
+    if authors[0] == 'N/A':
+        authors = []
     novel_info.set_authors(authors)
-    logging.info(f'authors = {novel_info.authors}')
+    logging.info(f'AUTHORS = {novel_info.authors}')
 
+# What if N/A
 def set_novel_info_artists(novel_info, soup):
     # title 처리
     artists = soup.get_text(separator='\n').strip().split('\n')
+    if artists[0] == 'N/A':
+        artists = []
     novel_info.set_artists(artists)
-    logging.info(f'artists= {novel_info.artists}')
+    logging.info(f'ARTISTS= {novel_info.artists}')
 
+# What if N/A
 def set_novel_info_year(novel_info, soup):
     # title 처리
     year = soup.get_text().strip()
+    if year == 'N/A':
+        year = ''
     novel_info.set_year(year)
-    logging.info(f'year={year}')
+    logging.info(f'YEAR={year}')
 
+# What if N/A
 def set_novel_info_original_publisher(novel_info, soup):
     publisher = soup.get_text(separator='\n').strip().split('\n')
     if publisher[0] == 'N/A':
         publisher = []
     novel_info.set_original_publisher(publisher)
-    logging.info(f'original_publisher= {novel_info.original_publisher}')
+    logging.info(f'ORIGINAL_PUBLISHER= {novel_info.original_publisher}')
 
 
+# What if N/A
 def set_novel_info_serialized_in(novel_info, soup):
     serialized_in = soup.get_text(separator='\n').strip().split('\n')
     if serialized_in[0] == 'N/A':
         serialized_in = []
-    novel_info.set_artists(serialized_in)
-    logging.info(f'serialized_in= {novel_info.serialized_in}')
-
-# def set_novel_info_(novel_info, soup):
-#     # title 처리
-#     title = soup.find("span", {"class": "releasestitle tabletitle"}).get_text()
-#     novel_info.set_title(title)
-#     print(novel_info.title)
-#
-#
-# def set_novel_info_(novel_info, soup):
-#     # title 처리
-#     title = soup.find("span", {"class": "releasestitle tabletitle"}).get_text()
-#     novel_info.set_title(title)
-#     print(novel_info.title)
-#
-#
-# def set_novel_info_(novel_info, soup):
-#     # title 처리
-#     title = soup.find("span", {"class": "releasestitle tabletitle"}).get_text()
-#     novel_info.set_title(title)
-#     print(novel_info.title)
-#
-# def set_novel_info_(novel_info, soup):
-#     # title 처리
-#     title = soup.find("span", {"class": "releasestitle tabletitle"}).get_text()
-#     novel_info.set_title(title)
-#     print(novel_info.title)
+    novel_info.set_serialized_in(serialized_in)
+    logging.info(f'SERIALIZED_IN= {novel_info.serialized_in}')
 
 # get_practice_html()
 read_practice_html()
