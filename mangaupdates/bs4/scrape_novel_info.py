@@ -113,7 +113,7 @@ def scrape_novel_info_thread():
             utils.utils.sleep_random_time(30,60)
 
             data_queue.put(novel_info)
-            logging.info(f'NOVEL_INFO = {novel_info}')
+            logging.info(f'NOVEL_INFO = {novel_info.print_all_attributes}')
             logging.info(f'########## {link} SCRAPING END ############')
 
         # request 에러 ==
@@ -512,7 +512,49 @@ def set_novel_info_original_publisher(novel_info, soup):
     publisher = soup.get_text(separator='\n').strip().split('\n')
     if publisher[0] == 'N/A':
         publisher = []
-    novel_info.set_original_publisher(publisher)
+        logging.info(f'ORIGINAL_PUBLISHER= {novel_info.original_publisher}')
+        novel_info.set_original_publisher(publisher)
+        return
+
+    original_publisher_list = []
+    for i, pub in enumerate(publisher):
+        # 지금 보고 있는게 (...) 라면 반복
+        if re.compile(r'\(.*\)').match(pub):
+            continue
+
+        # 지금 보고 있는게 마지막 인덱스라면, label이 없으니 그냥 저장
+        if i == (len(publisher) - 1):
+            original_publisher_list.append({
+                'publisher': pub,
+                'label': ''
+            })
+        else:
+            # 적어도 다음 index는 남아있다는 소리
+            next_item = publisher[i+1]
+            pattern = re.compile(r'\((?!Web Novel|Light Novel|\[Add\])(.*)\)')
+            parenthesis = re.compile(r'\(.*\)')
+            # 그 다음 item이 괄호가 아님.
+            if parenthesis.match(next_item) is None:
+                original_publisher_list.append({
+                    'publisher': pub,
+                    'label': ''
+                })
+                continue
+            # 그 다음 item이 괄호임 publisher (..label,..)
+            else:
+                # [Add]. Web Novel Light Novel이 아님. 즉, label임.
+                if pattern.match(next_item):
+                    original_publisher_list.append({
+                        'publisher': pub,
+                        'label': next_item,
+                    })
+                # 상기 이유임.
+                else:
+                    original_publisher_list.append({
+                        'publisher': pub,
+                        'label': ''
+                    })
+    novel_info.set_original_publisher(original_publisher_list)
     logging.info(f'ORIGINAL_PUBLISHER= {novel_info.original_publisher}')
 
 

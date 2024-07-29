@@ -96,4 +96,18 @@ class NovelInfo:
         self.serialized_in = value
         self.type = value
 
-
+    def __str__(self):
+        return (f'title = {self.title}\n'
+                f'description = {self.description}\n'
+                f'type = {self.type}\n'
+                f'year = {self.year}\n'
+                f'related_series = {self.related_series}\n'
+                f'associated_names = {self.associated_names}\n'
+                f'status_in_origin_country = {self.status_in_origin_country}\n'
+                f'image_url = {self.image_url}\n'
+                f'artists = {self.artists}\n'
+                f'authors = {self.authors}\n'
+                f'original_publisher = {self.original_publisher}\n'
+                f'serialized_in = {self.serialized_in}\n'
+                f'genres = {self.genres}\n'
+                f'anime_start_and_end = {self.anime_start_and_end}\n')
