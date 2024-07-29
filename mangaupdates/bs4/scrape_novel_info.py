@@ -1,8 +1,11 @@
+import queue
 import re
+import threading
 
 import requests
 import utils.utils
 import os.path
+import pandas as pd
 
 import logging
 import sys
@@ -36,21 +39,173 @@ useragent = utils.utils.get_randomzied_element(useragents)
 headers = utils.utils.get_headers(useragent)
 logging.info(f'proxies={proxy}, userAgent={useragent}, userheader={headers}')
 
-def get_practice_html():
-    headers = utils.utils.get_headers(useragent)
-    proxy = utils.utils.get_randomzied_element(proxies)
-    link = "https://www.mangaupdates.com/series/3qzxncc/re-zero-kara-hajimeru-isekai-seikatsu-novel"
-    novel_info_request = requests.get(
-        link,
-        proxies={'http': proxy},
-        headers=headers
+def get_novel_info_links():
+    with open("../../resources/mangaupdates/novel_links_practice_30.txt") as f:
+        links = f.read().split('\n')
+    return links
+
+links = get_novel_info_links()
+
+data_queue = queue.Queue()
+links_to_retry_queue = queue.Queue()
+links_queue = queue.Queue()
+for link in links:
+    links_queue.put(link)
+
+threads = []
+num_threads = 12
+thread_index = 0
+
+def scrape_novel_info_thread_starter():
+    global threads
+
+    # start 10 functions w/ time interval
+    for i in range(num_threads):
+        thread = threading.Thread(target=scrape_novel_info_thread)
+        threads.append(thread)
+        thread.start()
+        utils.utils.sleep_random_time(3,10)
+
+    for thread in threads:
+        thread.join()
+    save_publisher_queue_data_to_csv(data_queue)
+    save_error_link_to_retry(links_to_retry_queue)
+
+
+def scrape_novel_info_thread():
+    global links_queue
+    global data_queue
+
+    while not links_queue.empty():
+        novel_info = NovelInfo()
+        thread_headers = utils.utils.get_headers(useragent)
+        thread_proxy = utils.utils.get_randomzied_element(proxies)
+        link = links_queue.get()
+        req = requests.get(
+            link,
+            proxies={'http': thread_proxy},
+            headers=thread_headers
+        )
+
+        # get_alternate_names
+        try:
+            logging.info(f'########## {link} SCRAPING START ############')
+            # Re:Zero Kara Hajimeru Isekai Seikatsu (Novel)
+            soup = BeautifulSoup(req.content, 'html.parser')
+            #TITLE
+            set_novel_info_title(novel_info, soup)
+            to_parse_list = soup.find_all("div", {"class": "sContent"})
+
+            set_novel_info_description(novel_info, to_parse_list[0])
+            set_novel_info_type(novel_info, to_parse_list[1])
+            set_novel_info_related_series(novel_info, to_parse_list[2])
+            set_novel_info_associated_names(novel_info, to_parse_list[3])
+            set_novel_info_status_in_origin_country(novel_info, to_parse_list[6])
+            set_novel_info_anime_start_end(novel_info, to_parse_list[8])
+            set_novel_info_image_url(novel_info, to_parse_list[13])
+            set_novel_info_genre(novel_info,to_parse_list[14] )
+            set_novel_info_authors(novel_info, to_parse_list[18])
+            set_novel_info_artists(novel_info,to_parse_list[19] )
+            set_novel_info_year(novel_info, to_parse_list[20])
+            set_novel_info_original_publisher(novel_info, to_parse_list[21])
+            set_novel_info_serialized_in(novel_info, to_parse_list[22])
+
+            utils.utils.sleep_random_time(30,60)
+
+            data_queue.put(novel_info)
+            logging.info(f'NOVEL_INFO = {novel_info}')
+            logging.info(f'########## {link} SCRAPING END ############')
+
+        # request 에러 ==
+        except requests.exceptions.RequestException as e:
+            logging.WARNING(f"REQUEST EXCEPTION : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            thread_proxy = utils.utils.get_randomzied_element(proxies)
+            continue
+        except TypeError as e:
+            logging.WARNING(f"TYPEERROR : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            # thread = threading.Thread(target=scrape_novel_info_thread())
+            # threads.append(thread)
+            # thread.start()
+            # thread.join()
+            # utils.utils.sleep_random_time(5, 15)
+            #write
+            links_to_retry_queue.put(link)
+            continue
+        except requests.exceptions.MissingSchema as e:
+            links_to_retry_queue.put(link)
+            logging.WARNING(f"URLEMPTYERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            continue
+        except AttributeError as e:
+            links_to_retry_queue.put(link)
+            logging.WARNING(f"ATTRIBUTEERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            continue
+        except Exception as e:
+            links_to_retry_queue.put(link)
+            logging.WARNING(f'WARNING: {e}')
+            continue
+
+
+# 안돌아가는 오류가 있음. 나중에 Test 해볼 것.
+def save_error_link_to_retry(q):
+    logging.info(f"SAVING ERROR to file...")
+    RELATIVE_FILE_PATH = '../resources/error/novel_info_error_link.txt'
+    path = utils.utils.get_absolute_path(RELATIVE_FILE_PATH)
+
+    with open(path, mode="w+") as f:
+        while not q.empty():
+            link = q.get()
+            f.write(f"{link}\n")
+    logging.info(f"SAVING ERROR to file... FINISHED")
+
+
+def save_publisher_queue_data_to_csv(q):
+    logging.info(f"SAVING NOVEL INFO to file...")
+    RELATIVE_FILE_PATH = '../resources/csv/novel_info.csv'
+
+    # queue elements of dictionary object -> array
+    # dictlist = list(q)
+    novel_info_list = []
+    while not q.empty():
+        novel_info_list.append(q.get())
+
+    title = [novel_info.title for novel_info in novel_info_list]
+    description = [novel_info.description for novel_info in novel_info_list]
+    type_ = [novel_info.type for novel_info in novel_info_list]
+    year = [novel_info.year for novel_info in novel_info_list]
+    related_series = [novel_info.related_series for novel_info in novel_info_list]
+    associated_names = [novel_info.associated_names for novel_info in novel_info_list]
+    status_in_origin_country= [novel_info.status_in_origin_country for novel_info in novel_info_list]
+    image_url= [novel_info.image_url for novel_info in novel_info_list]
+    artists = [novel_info.artists for novel_info in novel_info_list]
+    authors= [novel_info.authors for novel_info in novel_info_list]
+    original_publisher = [novel_info.original_publisher  for novel_info in novel_info_list]
+    serialized_in = [novel_info.serialized_in  for novel_info in novel_info_list]
+    genres = [novel_info.genres  for novel_info in novel_info_list]
+    anime_start_and_end = [novel_info.anime_start_and_end  for novel_info in novel_info_list]
+
+    df = pd.DataFrame({
+        'title': title,
+        'description': description,
+        'type': type_,
+        'year': year,
+        'related_series': related_series,
+        'associated_names': associated_names,
+        'status_in_origin_country': status_in_origin_country,
+        'image_url': image_url,
+        'artists': artists,
+        'authors': authors,
+        'original_publisher': original_publisher,
+        'serialized_in': serialized_in,
+        'genres': genres,
+        'anime_start_and_end': anime_start_and_end
+    })
+
+    df.to_csv(
+        utils.utils.get_absolute_path(RELATIVE_FILE_PATH),
+        index=False,
+        header=False
     )
-    try:
-        soup = BeautifulSoup(novel_info_request.text, 'html.parser').find('body')
-        with open("../../practice/rezero.html", 'w', encoding='utf-8') as f:
-            f.write(novel_info_request.text)
-    except Exception as e:
-        print(e)
+    logging.info(f"Saving PUBLISHER to file... FINISHED")
 
 
 """
@@ -79,24 +234,10 @@ def read_practice_html():
 
     headers = utils.utils.get_headers(useragent)
     proxy = utils.utils.get_randomzied_element(proxies)
-    # link = "https://www.mangaupdates.com/series/qo1rsw8/mondaiji-tachi-ga-isekai-kara-kuru-sou-desu-yo-novel"
-    # link = "https://www.mangaupdates.com/series/261v4f9/ark-novel"
-    # link = "https://www.mangaupdates.com/series/kx3b4pm/bungaku-shoujo-novel"
-    # link = "https://www.mangaupdates.com/series/yuu8te1/the-sketch-artist-novel"
-    # link = "https://www.mangaupdates.com/series/zzzieh2/that-one-time-the-essay-a-child-wrote-over-summer-break-was-way-too-fantasy-novel"
-    # link = "https://www.mangaupdates.com/series/yuu8te1/the-sketch-artist-novel"
-    # link = "https://www.mangaupdates.com/series/yo6kq0f/i-bought-the-crown-prince-because-he-was-being-sold-at-the-slave-market-novel"
-
-    # link = "https://www.mangaupdates.com/series/ouam6mt/zero-no-tsukaima-novel"
-    # link = "https://www.mangaupdates.com/series/be9td6r/madan-no-ou-to-senki-novel"
-    # link = "https://www.mangaupdates.com/series/rullw8t/saenai-kanojo-no-sodatekata-novel"
-    # link = "https://www.mangaupdates.com/series/z4ycn3t/shinigami-no-ballad-novel"
-    # link = "https://www.mangaupdates.com/series/ouam6mt/zero-no-tsukaima-novel"
-    # link = "https://www.mangaupdates.com/series/i5e5n8z/hack-cell-novel"
-    # link = "https://www.mangaupdates.com/series/uf44acm/2000-years-of-magic-history-in-my-head-novel"
-
-    #Manga link
-    link = "https://www.mangaupdates.com/series/22jigcm/jojo-no-kimyou-na-bouken-part-7-steel-ball-run"
+    # link = "https://www.mangaupdates.com/series/3dzd5bx/noragami"
+    # link = "https://www.mangaupdates.com/series/iic9jn7/99-way-to-keep-poor-life-with-onii-chan-novel"
+    # link = "https://www.mangaupdates.com/series/5zlki4e/omae-gotoki-ga-maou-ni-kateru-to-omou-na-to-yuusha-party-o-tsuihou-sareta-node-outo-de-kimama-ni-kurashitai-novel"
+    link = "https://www.mangaupdates.com/series/3p2lq8p/66-666-years-advent-of-the-dark-mage-novel"
     req = requests.get(
         link,
         proxies={'http': proxy},
@@ -186,10 +327,10 @@ def set_novel_info_associated_names(novel_info, soup):
     associated_names = [text.strip() for text in soup.stripped_strings]
     # N/A
     if associated_names[0] == 'N/A':
-        novel_info.set_associated_names({
+        novel_info.set_associated_names([{
             'title': '',
             'language': '',
-        })
+        }])
         logging.info(f"ASSOCIATED_NAMES={novel_info.associated_names} [[ title = {novel_info.title} ]]")
         return
 
@@ -201,7 +342,7 @@ def set_novel_info_associated_names(novel_info, soup):
         associated_name = match.group(1).strip()
         if (associated_name is not None):
             language_detected = detect(associated_name)
-            logging.info(f'associated_name = {associated_name}, language={language_detected}')
+            logging.debug(f'associated_name = {associated_name}, language={language_detected}')
 
         associated_names_list.append({
             'title': associated_name,
@@ -232,7 +373,7 @@ def set_novel_info_status_in_origin_country(novel_info, soup):
     matches = pattern.findall(text_content)
 
     for match in matches:
-        logging.info(f"match={match}")
+        logging.debug(f"match={match}")
         if match[0] != '':
             volume = int(match[0])
             status = match[1]
@@ -273,20 +414,20 @@ def set_novel_info_status_in_origin_country(novel_info, soup):
 # What if N/A
 def set_novel_info_anime_start_end(novel_info, soup):
     novel_anime_premire_list = []
-    logging.info(f'soup: get_anime_start_end = {soup.get_text()}')
+    logging.debug(f'soup: get_anime_start_end = {soup.get_text()}')
     if soup.get_text() == 'N/A':
         novel_info.set_anime_start_and_end([])
         logging.info(f'NOVEL_ANIME_START_AND_END = {novel_anime_premire_list}')
         return
     text_content = soup.get_text(separator='\n').split('\n')
-    logging.info(f'text_content={text_content}')
+    logging.debug(f'text_content={text_content}')
     if len(text_content) != 3:
         novel_info.set_anime_start_and_end([])
         logging.info(f'NOVEL_ANIME_START_AND_END = {novel_anime_premire_list}')
         return
     starts_at_text = text_content[0]
     ends_at_text = text_content[1]
-    logging.info(f'starts_at={starts_at_text}, ends_at={ends_at_text}')
+    logging.debug(f'starts_at={starts_at_text}, ends_at={ends_at_text}')
 
     # 분리하다.
     season_num = 0
@@ -294,9 +435,9 @@ def set_novel_info_anime_start_end(novel_info, soup):
     start_arr = pattern.findall(starts_at_text)
     end_arr = pattern.findall(ends_at_text)
     season_num = min(len(start_arr), len(end_arr))
-    logging.info(f'season_num = {season_num}')
-    logging.info(f'start_arr = {start_arr}, season_num = {season_num}')
-    logging.info(f'end_arr = {end_arr}, season_num = {season_num}')
+    logging.debug(f'season_num = {season_num}')
+    logging.debug(f'start_arr = {start_arr}, season_num = {season_num}')
+    logging.debug(f'end_arr = {end_arr}, season_num = {season_num}')
 
     for index in range(0, season_num):
         volume_start = start_arr[index][0]
@@ -326,7 +467,10 @@ def set_novel_info_anime_start_end(novel_info, soup):
 # What if n/A
 def set_novel_info_image_url(novel_info, soup):
     # title 처리
-    img_url = soup.find('img')['src']
+    try:
+        img_url = soup.find('img')['src']
+    except TypeError as e:
+        img_url = ''
     novel_info.set_image_url(img_url)
     logging.info(f'URL = {novel_info.image_url}')
 
@@ -375,10 +519,25 @@ def set_novel_info_original_publisher(novel_info, soup):
 # What if N/A
 def set_novel_info_serialized_in(novel_info, soup):
     serialized_in = soup.get_text(separator='\n').strip().split('\n')
+    serialized_in_arr = []
     if serialized_in[0] == 'N/A':
-        serialized_in = []
-    novel_info.set_serialized_in(serialized_in)
+        serialized_in_arr = []
+    else:
+        for i in range(int(len(serialized_in) / 2)):
+            label = serialized_in[2*i]
+            publisher = serialized_in[2*i+1]
+            pattern = re.compile(r'.*\((.*)\)')
+            publisher = pattern.match(publisher).group(1)
+            label_and_publisher = {
+                'publisher': publisher.strip(),
+                'label': label.strip()
+            }
+            serialized_in_arr.append(label_and_publisher)
+
+    novel_info.set_serialized_in(serialized_in_arr)
     logging.info(f'SERIALIZED_IN= {novel_info.serialized_in}')
 
 # get_practice_html()
-read_practice_html()
+read_practice_html()   # FOR PRACTICING
+
+# scrape_novel_info_thread_starter()

@@ -57,7 +57,7 @@ class NovelInfo:
 
     # Getter and Setter for associated_names
     def set_associated_names(self, value):
-        if len(value) == 0 or value[0]['title'] == 'N/A':
+        if len(value) == 0 or value[0]['title'] == '':
             value = []
         else:
             self.associated_names = value
