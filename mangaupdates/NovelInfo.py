@@ -97,7 +97,8 @@ class NovelInfo:
         self.type = value
 
     def __str__(self):
-        return (f'title = {self.title}\n'
+        return (f'\n'
+                f'title = {self.title}\n'
                 f'description = {self.description}\n'
                 f'type = {self.type}\n'
                 f'year = {self.year}\n'

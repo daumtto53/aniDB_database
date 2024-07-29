@@ -40,7 +40,7 @@ headers = utils.utils.get_headers(useragent)
 logging.info(f'proxies={proxy}, userAgent={useragent}, userheader={headers}')
 
 def get_novel_info_links():
-    with open("../../resources/mangaupdates/novel_links_practice_30.txt") as f:
+    with open("../../resources/mangaupdates/novel_links.txt") as f:
         links = f.read().split('\n')
     return links
 
@@ -113,16 +113,16 @@ def scrape_novel_info_thread():
             utils.utils.sleep_random_time(30,60)
 
             data_queue.put(novel_info)
-            logging.info(f'NOVEL_INFO = {novel_info.print_all_attributes}')
+            logging.info(f'NOVEL_INFO = {novel_info}')
             logging.info(f'########## {link} SCRAPING END ############')
 
         # request 에러 ==
         except requests.exceptions.RequestException as e:
-            logging.WARNING(f"REQUEST EXCEPTION : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.warning(f"REQUEST EXCEPTION : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
             thread_proxy = utils.utils.get_randomzied_element(proxies)
             continue
         except TypeError as e:
-            logging.WARNING(f"TYPEERROR : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.warning(f"TYPEERROR : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
             # thread = threading.Thread(target=scrape_novel_info_thread())
             # threads.append(thread)
             # thread.start()
@@ -133,15 +133,19 @@ def scrape_novel_info_thread():
             continue
         except requests.exceptions.MissingSchema as e:
             links_to_retry_queue.put(link)
-            logging.WARNING(f"URLEMPTYERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.warning(f"URLEMPTYERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
             continue
         except AttributeError as e:
             links_to_retry_queue.put(link)
-            logging.WARNING(f"ATTRIBUTEERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            logging.warning(f"ATTRIBUTEERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
             continue
+        except KeyboardInterrupt as e:
+            logging.warning(f"CTRL C INPUT KEYBOARD INTERUUPTION TRIGGERED!!!!!!!!!!!, e={e}")
+            save_publisher_queue_data_to_csv(data_queue)
+            save_error_link_to_retry(links_to_retry_queue)
         except Exception as e:
             links_to_retry_queue.put(link)
-            logging.WARNING(f'WARNING: {e}')
+            logging.warning(f'WARNING: {e}')
             continue
 
 
@@ -155,6 +159,7 @@ def save_error_link_to_retry(q):
         while not q.empty():
             link = q.get()
             f.write(f"{link}\n")
+            logging.info(f'SAVING ERROR TO FILE = {link}')
     logging.info(f"SAVING ERROR to file... FINISHED")
 
 
@@ -167,6 +172,7 @@ def save_publisher_queue_data_to_csv(q):
     novel_info_list = []
     while not q.empty():
         novel_info_list.append(q.get())
+    logging.info(f'printing NOVELINFO = {novel_info_list}')
 
     title = [novel_info.title for novel_info in novel_info_list]
     description = [novel_info.description for novel_info in novel_info_list]
@@ -237,7 +243,8 @@ def read_practice_html():
     # link = "https://www.mangaupdates.com/series/3dzd5bx/noragami"
     # link = "https://www.mangaupdates.com/series/iic9jn7/99-way-to-keep-poor-life-with-onii-chan-novel"
     # link = "https://www.mangaupdates.com/series/5zlki4e/omae-gotoki-ga-maou-ni-kateru-to-omou-na-to-yuusha-party-o-tsuihou-sareta-node-outo-de-kimama-ni-kurashitai-novel"
-    link = "https://www.mangaupdates.com/series/3p2lq8p/66-666-years-advent-of-the-dark-mage-novel"
+    # link = "https://www.mangaupdates.com/series/3p2lq8p/66-666-years-advent-of-the-dark-mage-novel"
+    # link = "https://www.mangaupdates.com/series/xt29hih/1-2-prince-novel"
     req = requests.get(
         link,
         proxies={'http': proxy},
@@ -483,7 +490,10 @@ def set_novel_info_genre(novel_info, soup):
 
 # What if N/A
 def set_novel_info_authors(novel_info, soup):
-    authors = soup.get_text(separator='\n').strip().split('\n')
+    # authors = soup.get_text(separator='\n')
+    authors = regex_delete_add(
+        soup.get_text(separator='\n').strip()
+    ).split('\n')
     if authors[0] == 'N/A':
         authors = []
     novel_info.set_authors(authors)
@@ -492,7 +502,9 @@ def set_novel_info_authors(novel_info, soup):
 # What if N/A
 def set_novel_info_artists(novel_info, soup):
     # title 처리
-    artists = soup.get_text(separator='\n').strip().split('\n')
+    artists = regex_delete_add(
+        soup.get_text(separator='\n').strip()
+    ).split('\n')
     if artists[0] == 'N/A':
         artists = []
     novel_info.set_artists(artists)
@@ -509,7 +521,10 @@ def set_novel_info_year(novel_info, soup):
 
 # What if N/A
 def set_novel_info_original_publisher(novel_info, soup):
-    publisher = soup.get_text(separator='\n').strip().split('\n')
+    publisher = regex_delete_add(
+        soup.get_text(separator='\n').strip()
+    ).split('\n')
+
     if publisher[0] == 'N/A':
         publisher = []
         logging.info(f'ORIGINAL_PUBLISHER= {novel_info.original_publisher}')
@@ -519,39 +534,40 @@ def set_novel_info_original_publisher(novel_info, soup):
     original_publisher_list = []
     for i, pub in enumerate(publisher):
         # 지금 보고 있는게 (...) 라면 반복
-        if re.compile(r'\(.*\)').match(pub):
+        if re.compile(r'\(.*\)').search(pub) is not None:
             continue
 
         # 지금 보고 있는게 마지막 인덱스라면, label이 없으니 그냥 저장
         if i == (len(publisher) - 1):
             original_publisher_list.append({
-                'publisher': pub,
+                'publisher': pub.strip(),
                 'label': ''
             })
         else:
             # 적어도 다음 index는 남아있다는 소리
             next_item = publisher[i+1]
-            pattern = re.compile(r'\((?!Web Novel|Light Novel|\[Add\])(.*)\)')
-            parenthesis = re.compile(r'\(.*\)')
+            pattern = re.compile(r'\((?!Web Novel|Light Novel)(.*)\)')
+            parenthesis = re.compile(r'\((.*)\)')
             # 그 다음 item이 괄호가 아님.
-            if parenthesis.match(next_item) is None:
+            if parenthesis.search(next_item) is None:
                 original_publisher_list.append({
-                    'publisher': pub,
+                    'publisher': pub.strip(),
                     'label': ''
                 })
                 continue
             # 그 다음 item이 괄호임 publisher (..label,..)
             else:
                 # [Add]. Web Novel Light Novel이 아님. 즉, label임.
-                if pattern.match(next_item):
+                if pattern.search(next_item):
+                    label = parenthesis.search(next_item).group(1).strip()
                     original_publisher_list.append({
-                        'publisher': pub,
-                        'label': next_item,
+                        'publisher': pub.strip(),
+                        'label': label.strip(),
                     })
                 # 상기 이유임.
                 else:
                     original_publisher_list.append({
-                        'publisher': pub,
+                        'publisher': pub.strip(),
                         'label': ''
                     })
     novel_info.set_original_publisher(original_publisher_list)
@@ -579,7 +595,14 @@ def set_novel_info_serialized_in(novel_info, soup):
     novel_info.set_serialized_in(serialized_in_arr)
     logging.info(f'SERIALIZED_IN= {novel_info.serialized_in}')
 
+
+def regex_delete_add(string_):
+    pattern = re.compile(r'\[\s*Add\s*\]|\xa0')
+    string_ = pattern.sub("", string_)
+    return string_
+
+
 # get_practice_html()
-read_practice_html()   # FOR PRACTICING
+# read_practice_html()   # FOR PRACTICING
 
 # scrape_novel_info_thread_starter()
