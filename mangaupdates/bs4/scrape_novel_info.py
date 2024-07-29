@@ -245,6 +245,7 @@ def read_practice_html():
     # link = "https://www.mangaupdates.com/series/5zlki4e/omae-gotoki-ga-maou-ni-kateru-to-omou-na-to-yuusha-party-o-tsuihou-sareta-node-outo-de-kimama-ni-kurashitai-novel"
     # link = "https://www.mangaupdates.com/series/3p2lq8p/66-666-years-advent-of-the-dark-mage-novel"
     # link = "https://www.mangaupdates.com/series/xt29hih/1-2-prince-novel"
+    link = "https://www.mangaupdates.com/series/su6blie/vagabond"
     req = requests.get(
         link,
         proxies={'http': proxy},
@@ -603,6 +604,6 @@ def regex_delete_add(string_):
 
 
 # get_practice_html()
-# read_practice_html()   # FOR PRACTICING
+read_practice_html()   # FOR PRACTICING
 
 # scrape_novel_info_thread_starter()
