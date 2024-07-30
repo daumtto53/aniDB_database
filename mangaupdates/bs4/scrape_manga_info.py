@@ -16,12 +16,15 @@ from langdetect import detect
 from mangaupdates.NovelInfo import NovelInfo
 
 
+MANGA_INFO_BATCH = 0
+
+
 # LOGGING
 logger = logging.getLogger(__name__)
 logging.basicConfig(
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("scrape_manga_info.log", mode="w", encoding='utf-8'),
+        logging.FileHandler(f"scrape_manga_info_batch_{MANGA_INFO_BATCH}.log", mode="w", encoding='utf-8'),
     ],
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -39,8 +42,9 @@ useragent = utils.utils.get_randomzied_element(useragents)
 headers = utils.utils.get_headers(useragent)
 logging.info(f'proxies={proxy}, userAgent={useragent}, userheader={headers}')
 
+
 def get_novel_info_links():
-    with open("../../resources/mangaupdates/manga_link.txt") as f:
+    with open(f"../../resources/mangaupdates/manga_link_batch_{MANGA_INFO_BATCH}.txt") as f:
         links = f.read().split('\n')
     return links
 
@@ -152,7 +156,7 @@ def scrape_novel_info_thread():
 # 안돌아가는 오류가 있음. 나중에 Test 해볼 것.
 def save_error_link_to_retry(q):
     logging.info(f"SAVING ERROR to file...")
-    RELATIVE_FILE_PATH = '../resources/error/manga_info_error_link.txt'
+    RELATIVE_FILE_PATH = f'../resources/error/manga_info_batch_{MANGA_INFO_BATCH}_error_link.txt'
     path = utils.utils.get_absolute_path(RELATIVE_FILE_PATH)
 
     with open(path, mode="w+") as f:
@@ -165,7 +169,7 @@ def save_error_link_to_retry(q):
 
 def save_publisher_queue_data_to_csv(q):
     logging.info(f"SAVING MANGA INFO to file...")
-    RELATIVE_FILE_PATH = '../resources/csv/manga_info.csv'
+    RELATIVE_FILE_PATH = f'../resources/csv/manga_info_batch_{MANGA_INFO_BATCH}.csv'
 
     # queue elements of dictionary object -> array
     # dictlist = list(q)
