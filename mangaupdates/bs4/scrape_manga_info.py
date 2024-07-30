@@ -60,6 +60,26 @@ threads = []
 num_threads = 4
 thread_index = 0
 
+
+def iterate_over_batch_files():
+    global links
+    global data_queue
+    global links_to_retry_queue
+    global links_queue
+    global MANGA_INFO_BATCH
+
+    for i in range(79 + 1):
+        MANGA_INFO_BATCH = i
+
+        links = get_novel_info_links()
+        data_queue = queue.Queue()
+        links_to_retry_queue = queue.Queue()
+        links_queue = queue.Queue()
+        for url in links:
+            links_queue.put(url)
+        scrape_novel_info_thread_starter()
+
+
 def scrape_novel_info_thread_starter():
     global threads
 
@@ -610,4 +630,6 @@ def regex_delete_add(string_):
 # get_practice_html()
 # read_practice_html()   # FOR PRACTICING
 
-scrape_novel_info_thread_starter()
+# scrape_novel_info_thread_starter()
+
+iterate_over_batch_files()
