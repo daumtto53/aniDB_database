@@ -56,7 +56,7 @@ def put_all_pages_url_from_url(url, url_q):
         proxies={'http': thread_proxy},
         headers=thread_headers
     )
-    utils.utils.sleep_random_time(10,30)
+    utils.utils.sleep_random_time(3,10)
     soup = BeautifulSoup(req.content, 'html.parser')
 
     iter_page = 1
@@ -90,8 +90,8 @@ def create_consuming_urls():
             put_all_pages_url_from_url(url, url_q)
 
             #PRACICING
-            if j == 5:
-                return retrieval_url, url_q
+            # if j == 5:
+            #     return retrieval_url, url_q
 
     for i in range(21):
         url = f'https://www.mangaupdates.com/series.html?page={i+1}&type=manga&perpage=100&display=list'
@@ -126,7 +126,7 @@ def scrape_manga_links_thread_starter():
         thread = threading.Thread(target=scrape_manga_links)
         threads.append(thread)
         thread.start()
-        utils.utils.sleep_random_time(3,10)
+        utils.utils.sleep_random_time(3,20)
 
     for thread in threads:
         thread.join()
@@ -166,21 +166,25 @@ def scrape_manga_links():
         except requests.exceptions.RequestException as e:
             logging.warning(f"REQUEST EXCEPTION : STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
             thread_proxy = utils.utils.get_randomzied_element(proxies)
+            links_to_retry_queue.put(link)
             continue
         except requests.exceptions.MissingSchema as e:
-            links_to_retry_queue.put(link)
             logging.warning(f"URLEMPTYERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            links_to_retry_queue.put(link)
             continue
         except AttributeError as e:
-            links_to_retry_queue.put(link)
             logging.warning(f"ATTRIBUTEERROR: STATUS={requests.status_codes.codes}, final_link: {link}, PROXY={thread_proxy} ERROR: {e}")
+            links_to_retry_queue.put(link)
             continue
         except KeyboardInterrupt as e:
             logging.warning(f"CTRL C INPUT KEYBOARD INTERUUPTION TRIGGERED!!!!!!!!!!!, e={e}")
+            links_to_retry_queue.put(link)
             save_manga_links(data_queue)
             save_error_link_to_retry(links_to_retry_queue)
         except Exception as e:
             links_to_retry_queue.put(link)
+            save_manga_links(data_queue)
+            save_error_link_to_retry(links_to_retry_queue)
             logging.warning(f'WARNING: {e}')
             continue
 
