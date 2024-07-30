@@ -48,17 +48,46 @@ def queue_parsed_urls_into_data_queue(urls):
         data_queue.put(url)
 
 
+def put_all_pages_url_from_url(url, url_q):
+    thread_headers = utils.utils.get_headers(useragent)
+    thread_proxy = utils.utils.get_randomzied_element(proxies)
+    req = requests.get(
+        url,
+        proxies={'http': thread_proxy},
+        headers=thread_headers
+    )
+    utils.utils.sleep_random_time(10,30)
+    soup = BeautifulSoup(req.content, 'html.parser')
+
+    iter_page = 1
+    iter_page_div = soup.find('div', {'class': 'col-9 col-md-6 text-md-center specialtext text-nowrap'})
+    if iter_page_div is None:
+        iter_page = 1
+    else:
+        iter_page_text = iter_page_div.find('span', {'class': 'd-inline-block'}).get_text()
+        iter_page = re.compile(r'\((.*)\)').search(iter_page_text).group(1)
+    logging.info(f'iterate link = {url}, over iter page = {iter_page} times')
+
+    for i in range(int(iter_page)):
+        new_url = url + f"&page={i+1}"
+        url_q.put(new_url)
+        logging.info(f'ADDING_URL_W_PAGE_PARAMETERS: {new_url}')
+    return url_q
+
+
 def create_consuming_urls():
     retrieval_url = []
     url_q = queue.Queue()
+    new_url_q = queue.Queue()
     for i in range(26):
         for j in range(26):
             prefix_ = chr(ord('A') + i)
             postfix_ = chr(ord('A') + j)
             str_ = prefix_ + postfix_
             url = f'https://www.mangaupdates.com/series.html?type=manga&perpage=100&letter={str_}&display=list'
-            retrieval_url.append(url)
-            url_q.put(url)
+            # retrieval_url.append(url)
+            # url_q.put(url)
+            put_all_pages_url_from_url(url, url_q)
 
             #PRACICING
             if j == 5:
@@ -130,6 +159,7 @@ def scrape_manga_links():
                 print(f'{i}: {href}')
 
             utils.utils.sleep_random_time(45,70)
+
             logging.info(f'########## {link} SCRAPING END ############')
 
         # request 에러 ==
@@ -186,7 +216,9 @@ def practice():
 
     thread_headers = utils.utils.get_headers(useragent)
     thread_proxy = utils.utils.get_randomzied_element(proxies)
-    link = "https://www.mangaupdates.com/series.html?page=21&type=manga&perpage=100&display=list"
+    # link = "https://www.mangaupdates.com/series.html?page=21&type=manga&perpage=100&display=list"
+    # link = "https://www.mangaupdates.com/series.html?type=manga&perpage=100&letter=AA&display=list"
+    link = "https://www.mangaupdates.com/series.html?type=manga&perpage=100&letter=AB&display=list"
     req = requests.get(
         link,
         proxies={'http': thread_proxy},
@@ -195,7 +227,18 @@ def practice():
 
     logging.info(f'########## {link} SCRAPING START ############')
     soup = BeautifulSoup(req.content, 'html.parser')
+
+    iter_page = 1
+    # iter_page_div = soup.find('div', {'class': 'col-9 col-md-6 text-md-center specialtext text-nowrap'})
+    # if iter_page_div is None:
+    #     iter_page = 1
+    # else:
+    #     iter_page_text = iter_page_div.find('span', {'class': 'd-inline-block'}).get_text()
+    #     iter_page = re.compile(r'\((.*)\)').search(iter_page_text).group(1)
+    # logging.info(f'iterate link = {link}, over {iter_page} times')
+
     divs = soup.find_all('div', {'class': 'col-6 py-1 py-md-0 text'}) + soup.find_all('div', {'class': 'col-6 py-1 py-md-0 text alt'})
+
     for i, div in enumerate(divs):
         href = div.find('a')['href']
         data_queue.put(href)
