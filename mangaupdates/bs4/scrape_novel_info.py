@@ -53,7 +53,7 @@ for link in links:
     links_queue.put(link)
 
 threads = []
-num_threads = 12
+num_threads = 4
 thread_index = 0
 
 def scrape_novel_info_thread_starter():
@@ -110,7 +110,7 @@ def scrape_novel_info_thread():
             set_novel_info_original_publisher(novel_info, to_parse_list[21])
             set_novel_info_serialized_in(novel_info, to_parse_list[22])
 
-            utils.utils.sleep_random_time(30,60)
+            utils.utils.sleep_random_time(20,40)
 
             data_queue.put(novel_info)
             logging.info(f'NOVEL_INFO = {novel_info}')
@@ -604,6 +604,6 @@ def regex_delete_add(string_):
 
 
 # get_practice_html()
-read_practice_html()   # FOR PRACTICING
+# read_practice_html()   # FOR PRACTICING
 
-# scrape_novel_info_thread_starter()
+scrape_novel_info_thread_starter()

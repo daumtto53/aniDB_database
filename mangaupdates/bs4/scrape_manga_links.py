@@ -115,7 +115,7 @@ links_to_retry_queue = queue.Queue()
 data_queue = queue.Queue()
 
 threads = []
-num_threads = 12
+num_threads = 4
 thread_index = 0
 
 def scrape_manga_links_thread_starter():
