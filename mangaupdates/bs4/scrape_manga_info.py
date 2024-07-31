@@ -20,16 +20,16 @@ MANGA_INFO_BATCH = 0
 
 
 # LOGGING
-# logger = logging.getLogger(__name__)
-# logging.basicConfig(
-#     handlers=[
-#         logging.StreamHandler(sys.stdout),
-#         logging.FileHandler(f"scrape_manga_info_batch_{MANGA_INFO_BATCH}.log", mode="w", encoding='utf-8'),
-#     ],
-#     level=logging.INFO,
-#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-#     datefmt="%Y-%m-%d %H:%M:%S",
-# )
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(f"scrape_manga_info_basic_logger.log", mode="w", encoding='utf-8'),
+    ],
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 my_path = os.path.abspath(os.path.dirname(__file__))
 proxy_path = os.path.join(my_path, "../../resources/http_proxies.txt")
@@ -74,9 +74,10 @@ def iterate_over_batch_files():
         # LOGGING
         logger = logging.getLogger(__name__)
         logging.basicConfig(
+            force=True,
             handlers=[
                 logging.StreamHandler(sys.stdout),
-                logging.FileHandler(f"scrape_manga_info_batch_{MANGA_INFO_BATCH}.log", mode="w", encoding='utf-8'),
+                logging.FileHandler(f"scrape_manga_info_log_batch_{MANGA_INFO_BATCH}.log", mode="w", encoding='utf-8'),
             ],
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
