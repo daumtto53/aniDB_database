@@ -69,12 +69,27 @@ def iterate_over_batch_files():
     global MANGA_INFO_BATCH
 
     for i in range(79 + 1):
+        if i == 0 or i == 1:
+            continue
         MANGA_INFO_BATCH = i
 
         links = get_novel_info_links()
         data_queue = queue.Queue()
         links_to_retry_queue = queue.Queue()
         links_queue = queue.Queue()
+
+        # LOGGING
+        logger = logging.getLogger(__name__)
+        logging.basicConfig(
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler(f"scrape_manga_info_batch_{MANGA_INFO_BATCH}.log", mode="w", encoding='utf-8'),
+            ],
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+
         for url in links:
             links_queue.put(url)
         scrape_novel_info_thread_starter()
