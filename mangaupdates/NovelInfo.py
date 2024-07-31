@@ -94,7 +94,6 @@ class NovelInfo:
     # Getter and Setter for serialized_in
     def set_serialized_in(self, value):
         self.serialized_in = value
-        self.type = value
 
     def __str__(self):
         return (f'\n'
