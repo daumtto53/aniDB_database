@@ -60,6 +60,7 @@ threads = []
 num_threads = 4
 thread_index = 0
 
+nth_info = 0
 
 def iterate_over_batch_files():
     global links
@@ -67,10 +68,11 @@ def iterate_over_batch_files():
     global links_to_retry_queue
     global links_queue
     global MANGA_INFO_BATCH
+    global nth_info
 
     for i in range(79 + 1):
         MANGA_INFO_BATCH = i
-
+        nth_info = 0
         # LOGGING
         logger = logging.getLogger(__name__)
         logging.basicConfig(
@@ -84,7 +86,7 @@ def iterate_over_batch_files():
             datefmt="%Y-%m-%d %H:%M:%S",
         )
 
-        if i == 0 or i == 1:
+        if i < 25:
             logging.info(f"SKIPPING batch_i={i}")
             continue
 
@@ -118,6 +120,7 @@ def scrape_novel_info_thread_starter():
 def scrape_novel_info_thread():
     global links_queue
     global data_queue
+    global nth_info
 
     while not links_queue.empty():
         novel_info = NovelInfo()
@@ -153,10 +156,11 @@ def scrape_novel_info_thread():
             set_novel_info_original_publisher(novel_info, to_parse_list[21])
             set_novel_info_serialized_in(novel_info, to_parse_list[22])
 
-            utils.utils.sleep_random_time(15,35)
+            utils.utils.sleep_random_time(7,28)
 
             data_queue.put(novel_info)
-            logging.info(f'MANGA_INFO = {novel_info}')
+            nth_info = nth_info + 1
+            logging.info(f'#{nth_info} MANGA_INFO = {novel_info}')
             logging.info(f'########## {link} SCRAPING END ############')
 
         # request 에러 ==
