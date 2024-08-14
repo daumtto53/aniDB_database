@@ -53,7 +53,7 @@ for link in links:
     links_queue.put(link)
 
 threads = []
-num_threads = 4
+num_threads = 12
 thread_index = 0
 
 def scrape_novel_info_thread_starter():
