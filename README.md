@@ -1,2 +1,2 @@
 # aniDB_database
-database related project
+scraping data for anidb project
